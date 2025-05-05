@@ -23,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
 
-  DbService _dbService = DbService.instance;
+  final DbService _dbService = DbService.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                         SizedBox(height: 20),
-                        Container(
+                        SizedBox(
                           width: double.infinity,
                           height: 40,
                           child: ElevatedButton(

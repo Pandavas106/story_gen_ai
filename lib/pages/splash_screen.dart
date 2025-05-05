@@ -3,6 +3,8 @@ import 'login_screen.dart'; // instead of story_generator_page.dart
 
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }

@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:eduverse/constant.dart';
 import 'package:eduverse/providers/auth_provider.dart';
+import 'package:eduverse/pages/login_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:eduverse/secret.dart';
 
 class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
@@ -21,29 +27,74 @@ class _HomeScreenState extends State<HomeScreen> {
     'Adventure',
     'Mystery',
     'Romance',
-    "Games"
+    "Games",
   ];
 
-  void _generateStory() async {
-    if (_topicController.text.trim().isEmpty) return;
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _generateStory() async {
+  if (_topicController.text.trim().isEmpty) return;
 
-    await Future.delayed(Duration(seconds: 1));
+  setState(() {
+    _isLoading = true;
+    _generatedStory = '';
+  });
+
+  final String topic = _topicController.text.trim();
+  final String genre = _selectedGenre;
+
+  final prompt =
+      "Write a creative story based on the genre '$genre' explaining the topic '$topic'. and give an explaination for the story to understand the topic";
+
+  final url = Uri.parse(
+  'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY');
+
+
+
+  final headers = {'Content-Type': 'application/json'};
+  final body = jsonEncode({
+    'contents': [
+      {
+        'parts': [
+          {'text': prompt}
+        ]
+      }
+    ]
+  });
+
+  try {
+    final response = await http.post(url, headers: headers, body: body);
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final story = data['candidates'][0]['content']['parts'][0]['text'];
+
+      setState(() {
+        _generatedStory = story;
+        _isLoading = false;
+        _topicController.clear();
+      });
+    } else {
+      setState(() {
+        _generatedStory = 'Error: ${response.reasonPhrase} ${response.body}';
+        _isLoading = false;
+      });
+    }
+  } catch (e) {
     setState(() {
-      _generatedStory =
-          'Once upon a time in a $_selectedGenre world, a story began with the topic "${_topicController.text}".';
+      _generatedStory = 'Failed to generate story. Error: $e';
       _isLoading = false;
-      _topicController.clear();
     });
   }
+}
+
+    
+
+
 
   void _showGenrePicker() {
     showModalBottomSheet(
       context: context,
       builder: (context) {
-        return Container(
+        return SizedBox(
           height: 300,
           child: ListView.builder(
             itemCount: _genres.length,
@@ -83,6 +134,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: IconButton(
                   onPressed: () {
                     auth.logout(() async {});
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => LoginScreen(),
+                      ), // Replace with your actual Sign In widget
+                    );
                   },
                   icon: Icon(Icons.logout, color: kprimarycolor),
                   iconSize: 28,
@@ -104,7 +161,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 child:
                     _isLoading
                         ? Center(
-                          child: CircularProgressIndicator(color: kprimarycolor),
+                          child: CircularProgressIndicator(
+                            color: kprimarycolor,
+                          ),
                         )
                         : _generatedStory.isEmpty
                         ? Center(
@@ -151,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           // Genre Button
           IntrinsicWidth(
-            child: Container(
+            child: SizedBox(
               height: 55,
               child: ElevatedButton(
                 onPressed: _showGenrePicker,
