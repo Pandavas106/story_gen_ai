@@ -11,20 +11,20 @@ class Snackbarservices {
     _buildContext = context;
   }
 
-  void showSnackbarSuccess(String _message) {
+  void showSnackbarSuccess(String message) {
     ScaffoldMessenger.of(_buildContext!).showSnackBar(
       SnackBar(
-        content: Text(_message, style: TextStyle(color: Colors.white)),
+        content: Text(message, style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.green,
         duration: Duration(seconds: 1),
       ),
     );
   }
 
-  void showSnackbarError(String _message) {
+  void showSnackbarError(String message) {
     ScaffoldMessenger.of(_buildContext!).showSnackBar(
       SnackBar(
-        content: Text(_message, style: TextStyle(color: Colors.white)),
+        content: Text(message, style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.red,
         duration: Duration(seconds: 1),
       ),

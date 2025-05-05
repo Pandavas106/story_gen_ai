@@ -18,8 +18,8 @@ class AuthProvider extends ChangeNotifier {
   late FirebaseAuth _auth;
   static AuthProvider instance = AuthProvider();
   AuthStatus status = AuthStatus.NotAuthenticated;
-  NavigationService _navigationService = NavigationService.instance;
-  Snackbarservices _snackbarservices = Snackbarservices.instance;
+  final NavigationService _navigationService = NavigationService.instance;
+  final Snackbarservices _snackbarservices = Snackbarservices.instance;
 
   AuthProvider() {
     _auth = FirebaseAuth.instance;
@@ -33,22 +33,22 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void _checkCurrentUserIsAuthenticated() async {
-    user = await _auth.currentUser;
+    user = _auth.currentUser;
     if (user != null) {
       notifyListeners();
       _autoLogin();
     }
   }
 
-  void loginWithEmailAndPassword(String _email, String _password) async {
+  void loginWithEmailAndPassword(String email, String password) async {
     status = AuthStatus.Authenticating;
     notifyListeners();
     try {
-      UserCredential _result = await _auth.signInWithEmailAndPassword(
-        email: _email,
-        password: _password,
+      UserCredential result = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
       );
-      user = _result.user;
+      user = result.user;
       status = AuthStatus.Authenticated;
       _snackbarservices.showSnackbarSuccess("Successfully Logged In");
        _navigationService.navigateToReplacement("home");
@@ -61,18 +61,18 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void signUpWithEmailAndPassword(
-    String _email,
-    String _password,
-    Future<void> onSuccess(String uid),
+    String email,
+    String password,
+    Future<void> Function(String uid) onSuccess,
   ) async {
     status = AuthStatus.Authenticating;
     notifyListeners();
     try {
-      UserCredential _result = await _auth.createUserWithEmailAndPassword(
-        email: _email,
-        password: _password,
+      UserCredential result = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
       );
-      user = _result.user;
+      user = result.user;
       await onSuccess(user!.uid);
       status = AuthStatus.Authenticated;
       _snackbarservices.showSnackbarSuccess("Account Created Successfully");
@@ -85,7 +85,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void logout(Future<void> onSuccess()) async {
+  void logout(Future<void> Function() onSuccess) async {
     status = AuthStatus.UnAuthenticating;
     notifyListeners();
     try {
