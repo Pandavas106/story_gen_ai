@@ -32,6 +32,7 @@ secret.dart
 .pub-cache/
 .pub/
 /build/
+secret.dart
 
 # Symbolication related
 app.*.symbols
