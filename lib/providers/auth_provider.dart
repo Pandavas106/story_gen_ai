@@ -12,6 +12,8 @@ enum AuthStatus {
   Authenticated,
   UnAuthenticating,
   GoogleAuthenticating,
+  ResetingPassword,
+  PasswordResetEmailSent,
   Error,
 }
 
@@ -85,6 +87,19 @@ class AuthProvider extends ChangeNotifier {
       user = _result.user;
       status = AuthStatus.Authenticated;
       _navigationService.navigateToReplacement("home");
+    } catch (e) {
+      print(e);
+      status = AuthStatus.Error;
+    }
+    notifyListeners();
+  }
+
+  void passwordReset(String email) async {
+    status = AuthStatus.ResetingPassword;
+    notifyListeners();
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+      status = AuthStatus.PasswordResetEmailSent;
     } catch (e) {
       print(e);
       status = AuthStatus.Error;

@@ -153,26 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
             });
           },
         ),
-
-        Align(
-          alignment: Alignment.topRight,
-          child: TextButton(
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => ForgotPassword(),
-              );
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: kprimarycolor,
-              padding: EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-            ),
-            child: Text(
-              "Forgot Pasword",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ),
+        ForgotPassword(),
         const SizedBox(height: 20),
         Consumer<AuthProvider>(
           builder: (context, auth, _) {

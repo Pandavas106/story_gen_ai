@@ -7,14 +7,18 @@ import 'package:eduverse/services/snackbarServices.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 
-
-
+const kWebRecaptchaSiteKey = '6Lemcn0dAAAAABLkf6aiiHvpGD6x-zF3nOSDU2M8';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
     await Firebase.initializeApp();
+    await FirebaseAppCheck.instance.activate(
+      webProvider: ReCaptchaV3Provider(kWebRecaptchaSiteKey), 
+      androidProvider: AndroidProvider.debug,
+    );
     runApp(
       MultiProvider(
         providers: [
