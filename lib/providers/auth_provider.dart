@@ -56,10 +56,22 @@ class AuthProvider extends ChangeNotifier {
       status = AuthStatus.Authenticated;
       _snackbarservices.showSnackbarSuccess("Successfully Logged In");
       _navigationService.navigateToReplacement("home");
-    } catch (e) {
+    } on FirebaseAuthException catch (e) {
       status = AuthStatus.Error;
-      _snackbarservices.showSnackbarError("Authentication Error");
-      print(e);
+      if (e.code == 'user-not-found') {
+        _snackbarservices.showSnackbarError('No user found for that email.');
+      } else if (e.code == 'wrong-password') {
+        _snackbarservices.showSnackbarError('Wrong password provided.');
+      } else if (e.code == 'invalid-email') {
+        _snackbarservices.showSnackbarError('Email format is invalid.');
+      } else if (e.code == 'invalid-credential') {
+        Snackbarservices.instance.showSnackbarError(
+          "Reset Your Password and try again.",
+        );
+      } else {
+        _snackbarservices.showSnackbarError('Firebase error: ${e.message}');
+        print('Firebase error: ${e.message}');
+      }
     }
     notifyListeners();
   }
