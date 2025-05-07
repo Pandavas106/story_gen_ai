@@ -37,7 +37,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _generateStory() async {
     final topic = _topicController.text.trim();
-    if (topic.isEmpty) return;
+    if (topic.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a topic.')),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -104,7 +109,16 @@ You are a storyteller bot that teaches technical concepts in a fun and engaging 
     final response = await http.post(url, headers: headers, body: body);
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      return data['candidates'][0]['content']['parts'][0]['text'];
+      final candidates = data['candidates'];
+      if (candidates != null &&
+          candidates.isNotEmpty &&
+          candidates[0]['content'] != null &&
+          candidates[0]['content']['parts'] != null &&
+          candidates[0]['content']['parts'].isNotEmpty) {
+        return candidates[0]['content']['parts'][0]['text'];
+      } else {
+        throw Exception('Invalid response format from API.');
+      }
     } else {
       throw Exception('Error: ${response.reasonPhrase} ${response.body}');
     }
@@ -121,11 +135,6 @@ You are a storyteller bot that teaches technical concepts in a fun and engaging 
       }
     });
   }
-}
-
-    
-
-
 
   void _showGenrePicker() {
     showModalBottomSheet(
@@ -166,7 +175,6 @@ You are a storyteller bot that teaches technical concepts in a fun and engaging 
                   auth.logout(() async {});
                 },
                 icon: Icon(Icons.logout, color: kprimarycolor),
-
               );
             },
           ),
@@ -205,7 +213,7 @@ You are a storyteller bot that teaches technical concepts in a fun and engaging 
             MessageInputField(
               topicController: _topicController,
               selectedGenre: _selectedGenre,
-              onSend: _generateStory,
+              onSend:  _generateStory,
               onGenrePressed: _showGenrePicker,
             ),
           ],
