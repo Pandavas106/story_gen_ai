@@ -39,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final topic = _topicController.text.trim();
     if (topic.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter a topic.')),
+        SnackBar(content: Text('Please enter a topic.'),duration: Duration(milliseconds: 300),),
       );
       return;
     }

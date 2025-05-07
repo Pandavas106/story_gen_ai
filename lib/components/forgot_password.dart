@@ -101,22 +101,36 @@ class ForgotPassword extends StatelessWidget {
                         : ElevatedButton(
                           onPressed: () async {
                             String email = _emailController.text.trim();
+
                             if (email.isNotEmpty && email.contains("@")) {
                               auth.passwordReset(email);
 
-                              if (auth.status ==
-                                  AuthStatus.PasswordResetEmailSent) {
-                                showDialog(
-                                  context: context,
-                                  builder:
-                                      (context) =>
-                                          _emailSentDialougBox(email, context),
-                                );
-                              } else if (auth.status == AuthStatus.Error) {
-                                Snackbarservices.instance.showSnackbarError(
-                                  "Failed to send password reset email. Try again.",
-                                );
+                              void statusListener() async {
+                                if (auth.status ==
+                                    AuthStatus.PasswordResetEmailSent) {
+                                  auth.removeListener(statusListener);
+
+                                  Navigator.of(context).pop();
+
+                                  showDialog(
+                                    context: context,
+                                    builder:
+                                        (context) => _emailSentDialougBox(
+                                          email,
+                                          context,
+                                        ),
+                                  );
+                                } else if (auth.status == AuthStatus.Error) {
+                                  auth.removeListener(statusListener);
+
+                                  Navigator.of(context).pop();
+                                  Snackbarservices.instance.showSnackbarError(
+                                    "Failed to send password reset email. Try again.",
+                                  );
+                                }
                               }
+
+                              auth.addListener(statusListener);
                             } else {
                               Snackbarservices.instance.showSnackbarError(
                                 "Please Enter Valid Email Address",
