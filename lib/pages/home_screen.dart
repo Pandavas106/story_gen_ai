@@ -9,6 +9,8 @@ import 'package:eduverse/providers/auth_provider.dart';
 import 'package:eduverse/constant.dart';
 import 'package:eduverse/secret.dart';
 import 'package:eduverse/models/message.dart';
+// Import the new structured content model
+import 'package:eduverse/models/story_response.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -35,11 +37,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Message> _chatMessages = [];
 
+  // Variable to store structured response
+  // ignore: unused_field
+  StoryResponse? _storyResponse;
+
   Future<void> _generateStory() async {
     final topic = _topicController.text.trim();
     if (topic.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter a topic.'),duration: Duration(milliseconds: 300),),
+        SnackBar(
+          content: Text('Please enter a topic.'),
+          duration: Duration(milliseconds: 300),
+        ),
       );
       return;
     }
@@ -52,29 +61,42 @@ class _HomeScreenState extends State<HomeScreen> {
     _scrollToBottom();
 
     final prompt = """
-You are a storyteller bot that teaches technical concepts in a fun and engaging way. For the topic '$topic', write a response in the following structure:
-
-## 📘 Story (in $_selectedGenre style)
-- Tell a short and creative story between 150–250 words related to the concept.
-
-## 🧠 Explanation
-- Clearly explain the real technical concept (150–250 words).
-- Reference the story metaphor (e.g., if two people break their handshake, that represents a broken link in a linked list).
-- Use analogies from the story to clarify terms like "node", "link", "head", etc.
-- If relevant, use bullet points for clarity.
-
-## 💡 Example (with code)
-- Provide complete and idiomatic examples in the following formats:
-  - Python: A fully working example using proper Python syntax and conventions. Use triple backticks ```python
-  - Java: A complete class with a main method, using Java syntax and conventions. Use triple backticks ```java
-  - C++: A complete `main()` function with proper includes and syntax. Use triple backticks ```c++
-- Avoid referencing or copying the Python output in the Java and C++ examples. All three should be independently correct and idiomatic.
+You are a storyteller bot that teaches technical concepts in a fun and engaging way. For the topic $topic, generate a structured response in the following JSON-like key-value format:
+1. "story" → A fun, fictional story related to the concept (150–250 words).
+2. "concept" → A real explanation of the technical concept (150–250 words), using metaphors from the story.
+3. Depending on the topic:
+   - If it's a **coding-related topic** (like LeetCode problems, DSA, data structures, algorithms, programming languages, or databases), include:
+     "codes": {
+       "Python": "💡 Python Example\\n```python\\n# complete program with all operations\\n```",
+       "Java": "💡 Java Example\\n```java\\n// complete program with all operations\\n```",
+       "C++": "💡 C++ Example\\n```c++\\n// complete program with all operations\\n```",
+       "SQL": "💡 SQL Example\\n```sql\\n-- query\\n```",
+       "MongoDB": "💡 MongoDB Example\\n```javascript\\n// All related Mongo query or aggregation\\n```",
+       "Firebase": "💡 Firebase Example\\n```javascript\\n// All related Firebase Realtime or Firestore code\\n```"
+     }
+   - If it's a **non-coding technical topic** (like UI/UX, networking, IoT systems, OS, etc.), include:
+     "usecases": "💼 Use Cases\\n• Bullet 1\\n• Bullet 2\\n• Bullet 3"
+Strictly respond in this JSON-like key-value structure:
+{
+  "story": "📘 Story in $_selectedGenre style\\n...",
+  "concept": "🧠 Explanation\\n...",
+  "codes" or "usecases": {...}
+}
+Use markdown headings and code blocks appropriately. Do NOT add extra explanation or formatting outside this structure.
 """;
 
     try {
-      final response = await _fetchGeneratedContent(prompt);
+      final responseText = await _fetchGeneratedContent(prompt);
+
+      // Parse the response into the structured model
+      final storyResponse = StoryResponse.fromRawResponse(responseText);
+
+      // Store the response in the class variable
       setState(() {
-        _chatMessages.add(Message.ai(response));
+        _storyResponse = storyResponse;
+
+        // Add formatted message to chat
+        _chatMessages.add(Message.ai(storyResponse.formatFullResponse()));
         _isLoading = false;
         _topicController.clear();
       });
@@ -89,6 +111,8 @@ You are a storyteller bot that teaches technical concepts in a fun and engaging 
       _scrollToBottom();
     }
   }
+
+  // These functions are now handled by the StoryResponse model
 
   Future<String> _fetchGeneratedContent(String prompt) async {
     final url = Uri.parse(
@@ -186,21 +210,25 @@ You are a storyteller bot that teaches technical concepts in a fun and engaging 
         child: Column(
           children: [
             Expanded(
-              child: _chatMessages.isEmpty
-                  ? Center(child: Text("Enter a topic and select a genre."))
-                  : ListView.builder(
-                      padding: EdgeInsets.all(16),
-                      controller: _scrollController,
-                      itemCount: _chatMessages.length,
-                      itemBuilder: (context, index) {
-                        final message = _chatMessages[index];
-                        return ChatMessageWidget(message: message);
-                      },
-                    ),
+              child:
+                  _chatMessages.isEmpty
+                      ? Center(child: Text("Enter a topic and select a genre."))
+                      : ListView.builder(
+                        padding: EdgeInsets.all(16),
+                        controller: _scrollController,
+                        itemCount: _chatMessages.length,
+                        itemBuilder: (context, index) {
+                          final message = _chatMessages[index];
+                          return ChatMessageWidget(message: message);
+                        },
+                      ),
             ),
             if (_isLoading)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 20,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
@@ -213,7 +241,7 @@ You are a storyteller bot that teaches technical concepts in a fun and engaging 
             MessageInputField(
               topicController: _topicController,
               selectedGenre: _selectedGenre,
-              onSend:  _generateStory,
+              onSend: _generateStory,
               onGenrePressed: _showGenrePicker,
             ),
           ],
