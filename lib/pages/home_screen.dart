@@ -11,6 +11,7 @@ import 'package:eduverse/secret.dart';
 import 'package:eduverse/models/message.dart';
 // Import the new structured content model
 import 'package:eduverse/models/story_response.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -88,14 +89,11 @@ Use markdown headings and code blocks appropriately. Do NOT add extra explanatio
     try {
       final responseText = await _fetchGeneratedContent(prompt);
 
-      // Parse the response into the structured model
       final storyResponse = StoryResponse.fromRawResponse(responseText);
 
-      // Store the response in the class variable
       setState(() {
         _storyResponse = storyResponse;
 
-        // Add formatted message to chat
         _chatMessages.add(Message.ai(storyResponse.formatFullResponse()));
         _isLoading = false;
         _topicController.clear();
@@ -111,8 +109,6 @@ Use markdown headings and code blocks appropriately. Do NOT add extra explanatio
       _scrollToBottom();
     }
   }
-
-  // These functions are now handled by the StoryResponse model
 
   Future<String> _fetchGeneratedContent(String prompt) async {
     final url = Uri.parse(
@@ -184,7 +180,7 @@ Use markdown headings and code blocks appropriately. Do NOT add extra explanatio
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
-          'Story Generator',
+          'EduVerse',
           style: TextStyle(
             color: kprimarycolor,
             fontWeight: FontWeight.bold,
@@ -212,7 +208,41 @@ Use markdown headings and code blocks appropriately. Do NOT add extra explanatio
             Expanded(
               child:
                   _chatMessages.isEmpty
-                      ? Center(child: Text("Enter a topic and select a genre."))
+                      ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircleAvatar(
+                              radius: 40,
+                              backgroundColor: kprimarycolor.withOpacity(0.2),
+                              child: Icon(
+                                Icons.auto_stories,
+                                color: kprimarycolor,
+                                size: 47,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              "Welcome to Eduverse!",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: kprimarycolor,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Ask a question to generate a fun and technical story.",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ]
+                        ),
+                      )
                       : ListView.builder(
                         padding: EdgeInsets.all(16),
                         controller: _scrollController,
@@ -232,7 +262,7 @@ Use markdown headings and code blocks appropriately. Do NOT add extra explanatio
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    CircularProgressIndicator(color: kprimarycolor),
+                    SpinKitThreeBounce(color: kprimarycolor, size: 20),
                     SizedBox(width: 10),
                     Text("Generating Story", style: TextStyle(fontSize: 18)),
                   ],
