@@ -121,6 +121,11 @@ You are a storyteller bot that teaches technical concepts in a fun and engaging 
       }
     });
   }
+}
+
+    
+
+
 
   void _showGenrePicker() {
     showModalBottomSheet(
@@ -161,6 +166,7 @@ You are a storyteller bot that teaches technical concepts in a fun and engaging 
                   auth.logout(() async {});
                 },
                 icon: Icon(Icons.logout, color: kprimarycolor),
+
               );
             },
           ),

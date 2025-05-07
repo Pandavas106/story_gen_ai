@@ -8,16 +8,16 @@ class NavigationService {
     navigatorKey = GlobalKey<NavigatorState>();
   }
 
-  Future<dynamic> navigateToReplacement(String _routename) {
-    return navigatorKey.currentState!.pushReplacementNamed(_routename);
+  Future<dynamic> navigateToReplacement(String routename) {
+    return navigatorKey.currentState!.pushReplacementNamed(routename);
   }
 
-  Future<dynamic> navigateTo(String _routename) {
-    return navigatorKey.currentState!.pushNamed(_routename);
+  Future<dynamic> navigateTo(String routename) {
+    return navigatorKey.currentState!.pushNamed(routename);
   }
 
-  Future<dynamic> navigateToRoute(MaterialPageRoute _route) {
-    return navigatorKey.currentState!.push(_route);
+  Future<dynamic> navigateToRoute(MaterialPageRoute route) {
+    return navigatorKey.currentState!.push(route);
   }
 
   bool goBack() {
