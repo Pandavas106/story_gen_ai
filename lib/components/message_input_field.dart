@@ -1,8 +1,6 @@
 import 'package:eduverse/components/bottom_sheet.dart';
-import 'package:eduverse/services/navigation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:eduverse/constant.dart';
-import 'package:eduverse/components/genre_picker.dart';
 
 class MessageInputField extends StatelessWidget {
   final TextEditingController topicController;
@@ -19,22 +17,6 @@ class MessageInputField extends StatelessWidget {
     required this.onGenreChanged,
     required this.genres,
   }) : super(key: key);
-
-  Future<void> _showGenrePicker(BuildContext context) {
-    return showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return GenrePickerBottomSheet(
-          genres: genres,
-          selectedGenre: selectedGenre,
-          onGenreSelected: (genre) {
-            onGenreChanged(genre);
-            Future.microtask(() => NavigationService.instance.goBack());
-          },
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {

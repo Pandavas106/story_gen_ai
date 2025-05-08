@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'package:eduverse/services/app_navigation.dart';
 import 'package:eduverse/utils/app_routes.dart';
 import 'package:eduverse/services/db_service.dart';
@@ -55,7 +57,6 @@ class AuthProvider extends ChangeNotifier {
       status = AuthStatus.Authenticated;
       _snackbarservices.showSnackbarSuccess("Successfully Logged In");
 
-
       AppNavigation.instance.navigateToReplacement(AppRoutes.home);
     } on FirebaseAuthException catch (e) {
       status = AuthStatus.Error;
@@ -80,36 +81,29 @@ class AuthProvider extends ChangeNotifier {
   void signInWithGoogle() async {
     status = AuthStatus.GoogleAuthenticating;
     notifyListeners();
-
     try {
       UserCredential _result = await _auth.signInWithProvider(
         GoogleAuthProvider(),
       );
       user = _result.user;
-
       DocumentSnapshot _doc =
           await FirebaseFirestore.instance
               .collection('EVUsers')
               .doc(user!.uid)
               .get();
-
       if (!_doc.exists) {
-        // Create user in database if not exists
         DbService.instance.createUserInDB(
           user!.uid,
           user!.displayName ?? "",
           user!.email ?? "",
         );
       }
-
+      user = _result.user;
       status = AuthStatus.Authenticated;
-
-      // Use centralized navigation service
       AppNavigation.instance.navigateToReplacement(AppRoutes.home);
     } catch (e) {
       print(e);
       status = AuthStatus.Error;
-      _snackbarservices.showSnackbarError("Google sign-in failed");
     }
     notifyListeners();
   }
