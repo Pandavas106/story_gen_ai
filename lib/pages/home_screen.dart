@@ -1,11 +1,15 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:eduverse/constant.dart';
-import 'package:eduverse/providers/auth_provider.dart';
-import 'package:eduverse/pages/login_screen.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:eduverse/components/chat_message.dart';
+import 'package:eduverse/components/message_input_field.dart';
+import 'package:eduverse/providers/auth_provider.dart';
+import 'package:eduverse/constant.dart';
 import 'package:eduverse/secret.dart';
+import 'package:eduverse/models/message.dart';
+import 'package:eduverse/models/story_response.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,8 +20,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _topicController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _selectedGenre = 'Fantasy';
-  String _generatedStory = '';
   bool _isLoading = false;
 
   final List<String> _genres = [
@@ -27,233 +31,235 @@ class _HomeScreenState extends State<HomeScreen> {
     'Adventure',
     'Mystery',
     'Romance',
-    "Games",
+    'Games',
   ];
 
+  final List<Message> _chatMessages = [];
+
+  // ignore: unused_field
+  StoryResponse? _storyResponse;
+
   Future<void> _generateStory() async {
-  if (_topicController.text.trim().isEmpty) return;
+    final topic = _topicController.text.trim();
+    if (topic.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please enter a topic.'),
+          duration: Duration(milliseconds: 300),
+        ),
+      );
+      return;
+    }
 
-  setState(() {
-    _isLoading = true;
-    _generatedStory = '';
-  });
+    setState(() {
+      _isLoading = true;
+      _chatMessages.add(Message.user(topic));
+    });
 
-  final String topic = _topicController.text.trim();
-  final String genre = _selectedGenre;
+    _scrollToBottom();
 
-  final prompt =
-      "Write a creative story based on the genre '$genre' explaining the topic '$topic'. and give an explaination for the story to understand the topic";
+    final prompt = """
+You are a storyteller bot that teaches technical concepts in a fun and engaging way. For the topic $topic, generate a structured response in the following JSON-like key-value format:
+1. "story" → A fun, fictional story related to the concept (150–250 words).
+2. "concept" → A real explanation of the technical concept (150–250 words), using metaphors from the story.
+3. Depending on the topic:
+   - If it's a coding-related topic (like LeetCode problems, DSA, data structures, algorithms, programming languages, or databases), include:
+     "codes": {
+       "Python": "💡 Python Example\\n```python\\n# complete program with all operations\\n```",
+       "Java": "💡 Java Example\\n```java\\n// complete program with all operations\\n```",
+       "C++": "💡 C++ Example\\n```c++\\n// complete program with all operations\\n```",
+       "SQL": "💡 SQL Example\\n```sql\\n-- query\\n```",
+       "MongoDB": "💡 MongoDB Example\\n```javascript\\n// All related Mongo query or aggregation\\n```",
+       "Firebase": "💡 Firebase Example\\n```javascript\\n// All related Firebase Realtime or Firestore code\\n```"
+     }
+   - If it's a non-coding technical topic (like UI/UX, networking, IoT systems, OS, etc.), include:
+     "usecases": "💼 Use Cases\\n• Bullet 1\\n• Bullet 2\\n• Bullet 3"
+Strictly respond in this JSON-like key-value structure:
+{
+  "story": "📘 Story in $_selectedGenre style\\n...",
+  "concept": "🧠 Explanation\\n...",
+  "codes" or "usecases": {...}
+}
+Use markdown headings and code blocks appropriately. Do NOT add extra explanation or formatting outside this structure.
+""";
 
-  final url = Uri.parse(
-  'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY');
+    try {
+      final responseText = await _fetchGeneratedContent(prompt);
 
-
-
-  final headers = {'Content-Type': 'application/json'};
-  final body = jsonEncode({
-    'contents': [
-      {
-        'parts': [
-          {'text': prompt}
-        ]
-      }
-    ]
-  });
-
-  try {
-    final response = await http.post(url, headers: headers, body: body);
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final story = data['candidates'][0]['content']['parts'][0]['text'];
+      final storyResponse = StoryResponse.fromRawResponse(responseText);
 
       setState(() {
-        _generatedStory = story;
+        _storyResponse = storyResponse;
+        _chatMessages.add(Message.ai(storyResponse.formatFullResponse()));
         _isLoading = false;
         _topicController.clear();
       });
-    } else {
+
+      _scrollToBottom();
+    } catch (e) {
       setState(() {
-        _generatedStory = 'Error: ${response.reasonPhrase} ${response.body}';
+        _chatMessages.add(Message.ai('Failed to generate story. Error: $e'));
         _isLoading = false;
       });
+
+      _scrollToBottom();
     }
-  } catch (e) {
-    setState(() {
-      _generatedStory = 'Failed to generate story. Error: $e';
-      _isLoading = false;
-    });
   }
-}
 
-    
-
-
-
-  void _showGenrePicker() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return SizedBox(
-          height: 300,
-          child: ListView.builder(
-            itemCount: _genres.length,
-            itemBuilder: (context, index) {
-              return ListTile(
-                title: Text(_genres[index]),
-                onTap: () {
-                  setState(() {
-                    _selectedGenre = _genres[index];
-                  });
-                  Navigator.pop(context);
-                },
-              );
-            },
-          ),
-        );
-      },
+  Future<String> _fetchGeneratedContent(String prompt) async {
+    final url = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY',
     );
+
+    final headers = {'Content-Type': 'application/json'};
+    final body = jsonEncode({
+      'contents': [
+        {
+          'parts': [
+            {'text': prompt},
+          ],
+        },
+      ],
+    });
+
+    final response = await http.post(url, headers: headers, body: body);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final candidates = data['candidates'];
+      if (candidates != null &&
+          candidates.isNotEmpty &&
+          candidates[0]['content'] != null &&
+          candidates[0]['content']['parts'] != null &&
+          candidates[0]['content']['parts'].isNotEmpty) {
+        return candidates[0]['content']['parts'][0]['text'];
+      } else {
+        throw Exception('Invalid response format from API.');
+      }
+    } else {
+      throw Exception('Error: ${response.reasonPhrase} ${response.body}');
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        
         title: Text(
-          'Story Generator',
+          'EduVerse',
           style: TextStyle(
             color: kprimarycolor,
             fontWeight: FontWeight.bold,
-            fontSize: 27,
+            fontSize: 24,
           ),
         ),
         actions: [
           Consumer<AuthProvider>(
             builder: (context, auth, child) {
-              return Center(
-                child: IconButton(
-                  onPressed: () {
-                    auth.logout(() async {});
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => LoginScreen(),
-                      ), // Replace with your actual Sign In widget
-                    );
-                  },
-                  icon: Icon(Icons.logout, color: kprimarycolor),
-                  iconSize: 28,
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  splashRadius: 24,
-                  tooltip: 'Logout',
-                ),
+              return IconButton(
+                onPressed: () {
+                  auth.logout(() async {});
+                },
+                icon: Icon(Icons.logout, color: kprimarycolor),
               );
             },
           ),
         ],
+        backgroundColor: Colors.white,
+        scrolledUnderElevation: 0.5,
       ),
-      body: Padding(
-        padding: EdgeInsets.all(20.0),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child:
-                    _isLoading
-                        ? Center(
-                          child: CircularProgressIndicator(
-                            color: kprimarycolor,
-                          ),
-                        )
-                        : _generatedStory.isEmpty
-                        ? Center(
-                          child: Text(
-                            "Enter a topic and select a genre to generate a story.",
-                          ),
-                        )
-                        : SingleChildScrollView(
-                          child: Container(
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Color(0xFFFFF8E1),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child:
+                  _chatMessages.isEmpty
+                      ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircleAvatar(
+                              radius: 40,
+                              backgroundColor: kprimarycolor.withOpacity(0.2),
+                              child: Icon(
+                                Icons.auto_stories,
                                 color: kprimarycolor,
-                                width: 1.2,
+                                size: 47,
                               ),
                             ),
-                            child: SelectableText(
-                              _generatedStory,
-                              style: TextStyle(fontSize: 16),
+                            const SizedBox(height: 16),
+                            Text(
+                              "Welcome to Eduverse!",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: kprimarycolor,
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Ask a question to generate a fun and technical story.",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
                         ),
+                      )
+                      : ListView.builder(
+                        padding: EdgeInsets.all(16),
+                        controller: _scrollController,
+                        itemCount: _chatMessages.length,
+                        itemBuilder: (context, index) {
+                          final message = _chatMessages[index];
+                          return ChatMessageWidget(message: message);
+                        },
+                      ),
+            ),
+            if (_isLoading)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 20,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    SpinKitThreeBounce(color: kprimarycolor, size: 20),
+                    SizedBox(width: 10),
+                    Text("Generating Story", style: TextStyle(fontSize: 18)),
+                  ],
+                ),
               ),
-              _messageField(),
-            ],
-          ),
+            MessageInputField(
+              topicController: _topicController,
+              selectedGenre: _selectedGenre,
+              onSend: _generateStory,
+              onGenreChanged: (genre) {
+                setState(() {
+                  _selectedGenre = genre;
+                });
+              },
+              genres: _genres,
+            ),
+          ],
         ),
-      ),
-    );
-  }
-
-  Widget _messageField() {
-    return Container(
-      height: 55,
-      width: double.infinity,
-      margin: EdgeInsets.only(top: 12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          // Genre Button
-          IntrinsicWidth(
-            child: SizedBox(
-              height: 55,
-              child: ElevatedButton(
-                onPressed: _showGenrePicker,
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: kprimarycolor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(10),
-                      bottomLeft: Radius.circular(10),
-                    ),
-                  ),
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                ),
-                child: Text(
-                  _selectedGenre.replaceAll(' ', '\n'),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
-          ),
-
-          // Text field
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: TextFormField(
-                controller: _topicController,
-                decoration: InputDecoration(
-                  hintText: "Enter topic",
-                  border: InputBorder.none,
-                ),
-              ),
-            ),
-          ),
-
-          // Send Button
-          IconButton(
-            onPressed: _generateStory,
-            icon: Icon(Icons.send, color: kprimarycolor),
-          ),
-        ],
       ),
     );
   }

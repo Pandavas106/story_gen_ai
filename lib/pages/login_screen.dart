@@ -1,11 +1,13 @@
+import 'package:eduverse/components/continue_with_google.dart';
+import 'package:eduverse/components/forgot_password.dart';
 import 'package:eduverse/constant.dart';
 import 'package:eduverse/providers/auth_provider.dart';
 import 'package:eduverse/services/db_service.dart';
 import 'package:eduverse/services/snackbarServices.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
+// ignore: unused_import
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -69,6 +71,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: (index) {
                             setState(() {
                               showSignIn = index == 0;
+                              // Clear fields when switching between sign in and sign up
+                              _emailController.clear();
+                              _passwordController.clear();
+                              _nameController.clear();
                             });
                           },
                           borderRadius: BorderRadius.circular(12),
@@ -111,32 +117,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           width: double.infinity,
                           height: 40,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              foregroundColor: Colors.black.withOpacity(0.6),
-                              backgroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            onPressed: () {},
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  "Continue with Google",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 17,
-                                  ),
-                                ),
-                                SizedBox(width: 8),
-                                Icon(
-                                  FontAwesomeIcons.google,
-                                  color: kprimarycolor,
-                                ),
-                              ],
-                            ),
+                          child: Consumer<AuthProvider>(
+                            builder: (context, auth, child) {
+                              bool isAuthenticating =
+                                  auth.status ==
+                                  AuthStatus.GoogleAuthenticating;
+                              return ContinueWithGoogle(
+                                isAuthenticating: isAuthenticating,
+                                auth: auth,
+                              );
+                            },
                           ),
                         ),
                       ],
@@ -166,29 +156,54 @@ class _LoginScreenState extends State<LoginScreen> {
             });
           },
         ),
+        ForgotPassword(),
         const SizedBox(height: 20),
         Consumer<AuthProvider>(
           builder: (context, auth, _) {
+            bool isAuthenticating = auth.status == AuthStatus.Authenticating;
             return SizedBox(
               width: double.infinity,
               height: 40,
               child: ElevatedButton(
-                onPressed: () {
-                  final email = _emailController.text.trim();
-                  final password = _passwordController.text.trim();
-                  auth.loginWithEmailAndPassword(email, password);
-                },
+                onPressed: isAuthenticating
+                    ? null // Disable button while authenticating
+                    : () {
+                        final email = _emailController.text.trim();
+                        final password = _passwordController.text.trim();
+                        
+                        // Basic validation
+                        if (email.isEmpty || password.isEmpty) {
+                          Snackbarservices.instance.showSnackbarError(
+                            "Please enter email and password",
+                          );
+                          return;
+                        }
+                        
+                        auth.loginWithEmailAndPassword(email, password);
+                      },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
+                  backgroundColor:
+                      isAuthenticating ? Colors.white : Colors.orange,
                   foregroundColor: Colors.white,
+                  elevation: isAuthenticating ? 0 : 1,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: const Text(
-                  'Login',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-                ),
+                child:
+                    isAuthenticating
+                        ? Center(
+                          child: CircularProgressIndicator(
+                            color: kprimarycolor,
+                          ),
+                        )
+                        : Text(
+                          'Login',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
               ),
             );
           },
@@ -217,31 +232,60 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 20),
         Consumer<AuthProvider>(
           builder: (context, auth, _) {
+            bool isAuthenticating = auth.status == AuthStatus.Authenticating;
             return SizedBox(
               height: 40,
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  final name = _nameController.text.trim();
-                  final email = _emailController.text.trim();
-                  final password = _passwordController.text.trim();
+                onPressed: isAuthenticating
+                    ? null // Disable button while authenticating
+                    : () {
+                        final name = _nameController.text.trim();
+                        final email = _emailController.text.trim();
+                        final password = _passwordController.text.trim();
+                        
+                        // Basic validation
+                        if (name.isEmpty || email.isEmpty || password.isEmpty) {
+                          Snackbarservices.instance.showSnackbarError(
+                            "Please fill in all fields",
+                          );
+                          return;
+                        }
+                        
+                        if (password.length < 6) {
+                          Snackbarservices.instance.showSnackbarError(
+                            "Password must be at least 6 characters",
+                          );
+                          return;
+                        }
 
-                  auth.signUpWithEmailAndPassword(email, password,
-                      (uid) async {
-                    await _dbService.createUserInDB(uid, name, email);
-                  });
-                },
+                        auth.signUpWithEmailAndPassword(email, password, (uid) async {
+                          return await _dbService.createUserInDB(uid, name, email);
+                        });
+                      },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
+                  backgroundColor:
+                      isAuthenticating ? Colors.white : Colors.orange,
                   foregroundColor: Colors.white,
+                  elevation: isAuthenticating ? 0 : 1,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: const Text(
-                  'Register',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-                ),
+                child:
+                    isAuthenticating
+                        ? Center(
+                          child: CircularProgressIndicator(
+                            color: kprimarycolor,
+                          ),
+                        )
+                        : Text(
+                          'Register',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
               ),
             );
           },
@@ -269,17 +313,27 @@ class _LoginScreenState extends State<LoginScreen> {
         focusedBorder: UnderlineInputBorder(
           borderSide: BorderSide(color: kprimarycolor, width: 2),
         ),
-        suffixIcon: toggleVisibility != null
-            ? IconButton(
-                onPressed: toggleVisibility,
-                icon: Icon(
-                  obscure ? Icons.visibility : Icons.visibility_off,
-                  color: kcontentcolor,
-                  size: 20,
-                ),
-              )
-            : null,
+        suffixIcon:
+            toggleVisibility != null
+                ? IconButton(
+                  onPressed: toggleVisibility,
+                  icon: Icon(
+                    obscure ? Icons.visibility : Icons.visibility_off,
+                    color: kcontentcolor,
+                    size: 20,
+                  ),
+                )
+                : null,
       ),
     );
+  }
+  
+  @override
+  void dispose() {
+    // Clean up controllers when the widget is disposed
+    _emailController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    super.dispose();
   }
 }
