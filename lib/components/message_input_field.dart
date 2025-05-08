@@ -1,19 +1,40 @@
+import 'package:eduverse/components/bottom_sheet.dart';
+import 'package:eduverse/services/navigation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:eduverse/constant.dart';
+import 'package:eduverse/components/genre_picker.dart';
 
 class MessageInputField extends StatelessWidget {
   final TextEditingController topicController;
   final String selectedGenre;
+  final ValueChanged<String> onGenreChanged;
   final VoidCallback onSend;
-  final VoidCallback onGenrePressed;
+  final List<String> genres;
 
   const MessageInputField({
     Key? key,
     required this.topicController,
     required this.selectedGenre,
     required this.onSend,
-    required this.onGenrePressed,
+    required this.onGenreChanged,
+    required this.genres,
   }) : super(key: key);
+
+  Future<void> _showGenrePicker(BuildContext context) {
+    return showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return GenrePickerBottomSheet(
+          genres: genres,
+          selectedGenre: selectedGenre,
+          onGenreSelected: (genre) {
+            onGenreChanged(genre);
+            Future.microtask(() => NavigationService.instance.goBack());
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,10 +47,13 @@ class MessageInputField extends StatelessWidget {
       ),
       child: Row(
         children: [
-          GenreButton(
-            genre: selectedGenre,
-            onPressed: onGenrePressed,
+          GenrePickerButton(
+            selectedGenre: selectedGenre,
+            genres: genres,
+            onGenreChanged: onGenreChanged,
+            backgroundColor: kprimarycolor,
           ),
+
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -56,11 +80,8 @@ class GenreButton extends StatelessWidget {
   final String genre;
   final VoidCallback onPressed;
 
-  const GenreButton({
-    Key? key,
-    required this.genre,
-    required this.onPressed,
-  }) : super(key: key);
+  const GenreButton({Key? key, required this.genre, required this.onPressed})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {

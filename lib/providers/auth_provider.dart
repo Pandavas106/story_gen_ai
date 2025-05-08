@@ -1,5 +1,6 @@
+import 'package:eduverse/services/app_navigation.dart';
+import 'package:eduverse/utils/app_routes.dart';
 import 'package:eduverse/services/db_service.dart';
-import 'package:eduverse/services/navigation_service.dart';
 import 'package:eduverse/services/snackbarServices.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -22,31 +23,29 @@ class AuthProvider extends ChangeNotifier {
   late FirebaseAuth _auth;
   static AuthProvider instance = AuthProvider();
   AuthStatus status = AuthStatus.NotAuthenticated;
-  final NavigationService _navigationService = NavigationService.instance;
+  BuildContext? _context;
+
+  set buildContext(BuildContext context) {
+    _context = context;
+  }
+
   final Snackbarservices _snackbarservices = Snackbarservices.instance;
 
   AuthProvider() {
     _auth = FirebaseAuth.instance;
     _checkCurrentUserIsAuthenticated();
   }
-
-  void _autoLogin() async {
-    if (user != null) {
-      _navigationService.navigateToReplacement("home");
-    }
-  }
-
   void _checkCurrentUserIsAuthenticated() async {
     user = _auth.currentUser;
-    if (user != null) {
-      notifyListeners();
-      _autoLogin();
-    }
+    status =
+        user != null ? AuthStatus.Authenticated : AuthStatus.NotAuthenticated;
+    notifyListeners();
   }
 
   void loginWithEmailAndPassword(String email, String password) async {
     status = AuthStatus.Authenticating;
     notifyListeners();
+
     try {
       UserCredential result = await _auth.signInWithEmailAndPassword(
         email: email,
@@ -55,7 +54,9 @@ class AuthProvider extends ChangeNotifier {
       user = result.user;
       status = AuthStatus.Authenticated;
       _snackbarservices.showSnackbarSuccess("Successfully Logged In");
-      _navigationService.navigateToReplacement("home");
+
+
+      AppNavigation.instance.navigateToReplacement(AppRoutes.home);
     } on FirebaseAuthException catch (e) {
       status = AuthStatus.Error;
       if (e.code == 'user-not-found') {
@@ -79,46 +80,58 @@ class AuthProvider extends ChangeNotifier {
   void signInWithGoogle() async {
     status = AuthStatus.GoogleAuthenticating;
     notifyListeners();
+
     try {
       UserCredential _result = await _auth.signInWithProvider(
         GoogleAuthProvider(),
       );
       user = _result.user;
+
       DocumentSnapshot _doc =
           await FirebaseFirestore.instance
               .collection('EVUsers')
               .doc(user!.uid)
               .get();
+
       if (!_doc.exists) {
+        // Create user in database if not exists
         DbService.instance.createUserInDB(
           user!.uid,
           user!.displayName ?? "",
           user!.email ?? "",
         );
       }
-      user = _result.user;
+
       status = AuthStatus.Authenticated;
-      _navigationService.navigateToReplacement("home");
+
+      // Use centralized navigation service
+      AppNavigation.instance.navigateToReplacement(AppRoutes.home);
     } catch (e) {
       print(e);
       status = AuthStatus.Error;
+      _snackbarservices.showSnackbarError("Google sign-in failed");
     }
     notifyListeners();
   }
 
+  // Reset password via email
   void passwordReset(String email) async {
     status = AuthStatus.ResetingPassword;
     notifyListeners();
+
     try {
       await _auth.sendPasswordResetEmail(email: email);
       status = AuthStatus.PasswordResetEmailSent;
+      _snackbarservices.showSnackbarSuccess("Password reset email sent");
     } catch (e) {
       print(e);
       status = AuthStatus.Error;
+      _snackbarservices.showSnackbarError("Failed to send reset email");
     }
     notifyListeners();
   }
 
+  // Sign up with email and password
   void signUpWithEmailAndPassword(
     String email,
     String password,
@@ -126,16 +139,19 @@ class AuthProvider extends ChangeNotifier {
   ) async {
     status = AuthStatus.Authenticating;
     notifyListeners();
+
     try {
       UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
       user = result.user;
+
       await onSuccess(user!.uid);
       status = AuthStatus.Authenticated;
       _snackbarservices.showSnackbarSuccess("Account Created Successfully");
-      _navigationService.navigateToReplacement("home");
+
+      AppNavigation.instance.navigateToReplacement(AppRoutes.home);
     } catch (e) {
       status = AuthStatus.Error;
       _snackbarservices.showSnackbarError("Authentication Error");
@@ -147,15 +163,18 @@ class AuthProvider extends ChangeNotifier {
   void logout(Future<void> Function() onSuccess) async {
     status = AuthStatus.UnAuthenticating;
     notifyListeners();
+
     try {
       await _auth.signOut();
       user = null;
       status = AuthStatus.NotAuthenticated;
       await onSuccess();
-      _navigationService.navigateToReplacement("login");
+
+      AppNavigation.instance.navigateToReplacement(AppRoutes.login);
     } catch (e) {
       status = AuthStatus.Error;
       _snackbarservices.showSnackbarError("Error in Logout");
+      print("Logout error: $e");
     }
     notifyListeners();
   }

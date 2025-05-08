@@ -1,15 +1,13 @@
 import 'dart:convert';
-import 'package:eduverse/components/chat_message.dart';
-import 'package:eduverse/components/genre_picker.dart';
-import 'package:eduverse/components/message_input_field.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:eduverse/components/chat_message.dart';
+import 'package:eduverse/components/message_input_field.dart';
 import 'package:eduverse/providers/auth_provider.dart';
 import 'package:eduverse/constant.dart';
 import 'package:eduverse/secret.dart';
 import 'package:eduverse/models/message.dart';
-// Import the new structured content model
 import 'package:eduverse/models/story_response.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 
@@ -38,7 +36,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Message> _chatMessages = [];
 
-  // Variable to store structured response
   // ignore: unused_field
   StoryResponse? _storyResponse;
 
@@ -66,7 +63,7 @@ You are a storyteller bot that teaches technical concepts in a fun and engaging 
 1. "story" → A fun, fictional story related to the concept (150–250 words).
 2. "concept" → A real explanation of the technical concept (150–250 words), using metaphors from the story.
 3. Depending on the topic:
-   - If it's a **coding-related topic** (like LeetCode problems, DSA, data structures, algorithms, programming languages, or databases), include:
+   - If it's a coding-related topic (like LeetCode problems, DSA, data structures, algorithms, programming languages, or databases), include:
      "codes": {
        "Python": "💡 Python Example\\n```python\\n# complete program with all operations\\n```",
        "Java": "💡 Java Example\\n```java\\n// complete program with all operations\\n```",
@@ -75,7 +72,7 @@ You are a storyteller bot that teaches technical concepts in a fun and engaging 
        "MongoDB": "💡 MongoDB Example\\n```javascript\\n// All related Mongo query or aggregation\\n```",
        "Firebase": "💡 Firebase Example\\n```javascript\\n// All related Firebase Realtime or Firestore code\\n```"
      }
-   - If it's a **non-coding technical topic** (like UI/UX, networking, IoT systems, OS, etc.), include:
+   - If it's a non-coding technical topic (like UI/UX, networking, IoT systems, OS, etc.), include:
      "usecases": "💼 Use Cases\\n• Bullet 1\\n• Bullet 2\\n• Bullet 3"
 Strictly respond in this JSON-like key-value structure:
 {
@@ -93,7 +90,6 @@ Use markdown headings and code blocks appropriately. Do NOT add extra explanatio
 
       setState(() {
         _storyResponse = storyResponse;
-
         _chatMessages.add(Message.ai(storyResponse.formatFullResponse()));
         _isLoading = false;
         _topicController.clear();
@@ -156,29 +152,12 @@ Use markdown headings and code blocks appropriately. Do NOT add extra explanatio
     });
   }
 
-  void _showGenrePicker() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return GenrePickerBottomSheet(
-          genres: _genres,
-          selectedGenre: _selectedGenre,
-          onGenreSelected: (genre) {
-            setState(() {
-              _selectedGenre = genre;
-            });
-            Navigator.pop(context);
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        
         title: Text(
           'EduVerse',
           style: TextStyle(
@@ -240,7 +219,7 @@ Use markdown headings and code blocks appropriately. Do NOT add extra explanatio
                                 color: Colors.black54,
                               ),
                             ),
-                          ]
+                          ],
                         ),
                       )
                       : ListView.builder(
@@ -272,7 +251,12 @@ Use markdown headings and code blocks appropriately. Do NOT add extra explanatio
               topicController: _topicController,
               selectedGenre: _selectedGenre,
               onSend: _generateStory,
-              onGenrePressed: _showGenrePicker,
+              onGenreChanged: (genre) {
+                setState(() {
+                  _selectedGenre = genre;
+                });
+              },
+              genres: _genres,
             ),
           ],
         ),
