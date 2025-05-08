@@ -4,7 +4,6 @@ import 'package:eduverse/constant.dart';
 import 'package:eduverse/providers/auth_provider.dart';
 import 'package:eduverse/services/db_service.dart';
 import 'package:eduverse/services/snackbarServices.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 // ignore: unused_import
@@ -72,6 +71,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: (index) {
                             setState(() {
                               showSignIn = index == 0;
+                              // Clear fields when switching between sign in and sign up
+                              _emailController.clear();
+                              _passwordController.clear();
+                              _nameController.clear();
                             });
                           },
                           borderRadius: BorderRadius.circular(12),
@@ -162,11 +165,22 @@ class _LoginScreenState extends State<LoginScreen> {
               width: double.infinity,
               height: 40,
               child: ElevatedButton(
-                onPressed: () {
-                  final email = _emailController.text.trim();
-                  final password = _passwordController.text.trim();
-                  auth.loginWithEmailAndPassword(email, password);
-                },
+                onPressed: isAuthenticating
+                    ? null // Disable button while authenticating
+                    : () {
+                        final email = _emailController.text.trim();
+                        final password = _passwordController.text.trim();
+                        
+                        // Basic validation
+                        if (email.isEmpty || password.isEmpty) {
+                          Snackbarservices.instance.showSnackbarError(
+                            "Please enter email and password",
+                          );
+                          return;
+                        }
+                        
+                        auth.loginWithEmailAndPassword(email, password);
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
                       isAuthenticating ? Colors.white : Colors.orange,
@@ -223,15 +237,32 @@ class _LoginScreenState extends State<LoginScreen> {
               height: 40,
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  final name = _nameController.text.trim();
-                  final email = _emailController.text.trim();
-                  final password = _passwordController.text.trim();
+                onPressed: isAuthenticating
+                    ? null // Disable button while authenticating
+                    : () {
+                        final name = _nameController.text.trim();
+                        final email = _emailController.text.trim();
+                        final password = _passwordController.text.trim();
+                        
+                        // Basic validation
+                        if (name.isEmpty || email.isEmpty || password.isEmpty) {
+                          Snackbarservices.instance.showSnackbarError(
+                            "Please fill in all fields",
+                          );
+                          return;
+                        }
+                        
+                        if (password.length < 6) {
+                          Snackbarservices.instance.showSnackbarError(
+                            "Password must be at least 6 characters",
+                          );
+                          return;
+                        }
 
-                  auth.signUpWithEmailAndPassword(email, password, (uid) async {
-                    await _dbService.createUserInDB(uid, name, email);
-                  });
-                },
+                        auth.signUpWithEmailAndPassword(email, password, (uid) async {
+                          return await _dbService.createUserInDB(uid, name, email);
+                        });
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
                       isAuthenticating ? Colors.white : Colors.orange,
@@ -295,5 +326,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 : null,
       ),
     );
+  }
+  
+  @override
+  void dispose() {
+    // Clean up controllers when the widget is disposed
+    _emailController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    super.dispose();
   }
 }
